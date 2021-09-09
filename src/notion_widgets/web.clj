@@ -48,9 +48,9 @@
    :headers {"Content-Type" "application/edn"}
    :body (pr-str data)})
 
-(defn append-block []
+(defn append-block [id]
   (println "here")
-  (-> (client/patch "https://api.notion.com/v1/blocks/51904057270c4ba49ddd2805dcf3d2a0/children"
+  (-> (client/patch (str "https://api.notion.com/v1/blocks/" id "/children")
                     {:body "{\"children\": [{\"object\": \"block\",\"type\": \"heading_2\",\"heading_2\": {\"text\": [{ \"type\": \"text\", \"text\": { \"content\": \"Pouet\" } }]}}]}"
                      :headers {"Authorization" "secret_mt9XpnujzYB8JQZC9X4PyYw0wMpsAzDr8BTInyPszuD"
                                "Content-Type" "application/json"
@@ -62,7 +62,7 @@
 
 (defroutes app-routes
            (GET "/" [] (html-response index-page))
-           (GET "/append-block" _ (edn-response (append-block)))
+           (GET "/append-block/:id" [id] (edn-response (append-block id)))
            (route/not-found "Not Found"))
 
 (def app

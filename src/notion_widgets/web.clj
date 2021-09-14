@@ -60,8 +60,8 @@
       :body
       (json/read-str :key-fn keyword)))
 
-(defroutes app-routes
-           (GET "/" [] (html-response index-page))
+(defroutes
+           app-routes     (GET "/" [] (html-response index-page))
            (GET "/append-block/:id" [id] (edn-response (append-block id)))
            (route/not-found "Not Found"))
 
@@ -72,6 +72,8 @@
         :access-control-allow-methods [:get :put :post :delete])
       (wrap-defaults site-defaults)
       (xh/wrap-frame-options {:allow-from "*"})))
+
+
 
 
 (defn -main [& [port]]

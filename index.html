@@ -7,9 +7,6 @@
     <script src="script.js"></script>
 </head>
 <body>
-<div>Hello</div>
-
-<form action="post">
     <label for="notion-page-url">Where am I?:</label><br>
     <input type="text" id="notion-page-url" name="page-url"><br>
 
@@ -19,8 +16,26 @@
         <option value="two">Two</option>
     </select>
 
-    <input type="submit" value="Submit">
-</form>
+    <input id="submit-btn" type="submit">
+<script>
+    function getFormData(){
+        const widgetType = document.getElementById('widget-select').value;
+        const pageId = document.getElementById('notion-page-url').value;
+        return {uri, pageId}
+    }
+
+    const button = document.getElementById('submit-btn');
+
+    button.addEventListener('click', async _ => {
+        try {
+            const response = await fetch('https://aqueous-caverns-81645.herokuapp.com/create-widget',
+            {method: 'post',
+             body: getFormData()});
+            console.log('Completed!', response);
+        } catch(err) {
+            console.error(`Error: ${err}`);
+        }});
+</script>
 
 </body>
 </html>

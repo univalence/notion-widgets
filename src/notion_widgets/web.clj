@@ -12,7 +12,11 @@
             [clojure.data.json :as json]
             [hiccup.page :refer [html5]]
             [ring.middleware.cors :refer [wrap-cors]]
-            [ring.middleware.x-headers :as xh]))
+            [ring.middleware.x-headers :as xh]
+            [ring.middleware.params :as wp]))
+
+(def ROOT_URL "https://univalence.github.io/notion-widgets/")
+
 
 (def index-page
   (html5
@@ -60,9 +64,21 @@
       :body
       (json/read-str :key-fn keyword)))
 
-(defroutes
-           app-routes     (GET "/" [] (html-response index-page))
+(defn append-embed [{:keys [pageId widgetType]}]
+  (client/patch (str "https://api.notion.com/v1/blocks/" pageId "/children")
+                {:body (json/write-str {:children [{:type "embed" :embed {:url (str ROOT_URL widgetType "?pageId=" pageId)}}]})
+                 #_(str "{\"children\": [{  \"type\": \"embed\", \"embed\": {\"url\": \"" ROOT_URL widgetType "?pageId=" pageId "\"  }}]}")
+                 :headers {"Authorization" "secret_mt9XpnujzYB8JQZC9X4PyYw0wMpsAzDr8BTInyPszuD"
+                           "Content-Type" "application/json"
+                           "Notion-Version" "2021-05-13"}
+                 :content-type :json
+                 :accept :json}))
+
+
+(defroutes app-routes
+           (GET "/" [] (html-response index-page))
            (GET "/append-block/:id" [id] (edn-response (append-block id)))
+           (POST "/create-widget" {body :body} (edn-response (append-embed (read-string (slurp body)))))
            (route/not-found "Not Found"))
 
 (def app
@@ -70,7 +86,8 @@
       (wrap-cors
         :access-control-allow-origin ["*"]
         :access-control-allow-methods [:get :put :post :delete])
-      (wrap-defaults site-defaults)
+      (wrap-defaults (assoc-in site-defaults [:security :anti-forgery] false))
+      (wp/wrap-params)
       (xh/wrap-frame-options {:allow-from "*"})))
 
 
@@ -83,3 +100,4 @@
 ;; For interactive development:
 ;; (.stop server)
 ;; (def server (-main))
+

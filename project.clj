@@ -11,7 +11,8 @@
                  [clj-http "3.12.3"]
                  [org.clojure/data.json "1.0.0"]
                  [hiccup "1.0.5"]
-                 [ring-cors "0.1.13"]]
+                 [ring-cors "0.1.13"]
+                 [cheshire "5.10.0"]]
   :min-lein-version "2.0.0"
   :plugins [[environ/environ.lein "0.3.1"]]
   :hooks [environ.leiningen.hooks]

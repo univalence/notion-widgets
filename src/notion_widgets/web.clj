@@ -52,6 +52,11 @@
    :headers {"Content-Type" "text/html"}
    :body content})
 
+(defn json-response [content]
+  {:status 200
+   :headers {"Content-Type" "application/json"}
+   :body (json/write-str content)})
+
 (defn edn-response [data]
   {:status 200
    :headers {"Content-Type" "application/edn"}
@@ -77,7 +82,9 @@
 (defroutes app-routes
            (GET "/" [] (html-response index-page))
            (GET "/append-block/:id" [id] (edn-response (append-block id)))
-           (POST "/create-widget" {body :body} (edn-response (append-embed (json/read-str (slurp body) :key-fn keyword))))
+           (POST "/create-widget" {body :body}
+             (edn-response (append-embed (json/read-str (slurp body) :key-fn keyword)))
+             (json-response {:success true}))
            (route/not-found "Not Found"))
 
 (def app

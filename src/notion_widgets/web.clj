@@ -17,6 +17,11 @@
 
 (def ROOT_URL "https://univalence.github.io/notion-widgets/")
 
+(def NOTION_API_HEADERS {"Authorization" "secret_mt9XpnujzYB8JQZC9X4PyYw0wMpsAzDr8BTInyPszuD"
+                         "Content-Type" "application/json"
+                         "Notion-Version" "2021-05-13"})
+
+(def NOTION_API_ROOT_URL "https://api.notion.com/v1/")
 
 (def index-page
   (html5
@@ -53,24 +58,19 @@
    :body (pr-str data)})
 
 (defn append-block [id]
-  (println "here")
-  (-> (client/patch (str "https://api.notion.com/v1/blocks/" id "/children")
-                    {:body "{\"children\": [{\"object\": \"block\",\"type\": \"heading_2\",\"heading_2\": {\"text\": [{ \"type\": \"text\", \"text\": { \"content\": \"Pouet\" } }]}}]}"
-                     :headers {"Authorization" "secret_mt9XpnujzYB8JQZC9X4PyYw0wMpsAzDr8BTInyPszuD"
-                               "Content-Type" "application/json"
-                               "Notion-Version" "2021-05-13"}
+  (-> (client/patch (str NOTION_API_ROOT_URL "blocks/" id "/children")
+                    {:body (json/write-str {:children [{:object "block", :type "heading_2", :heading_2 {:text [{:type "text", :text {:content "Pouet"}}]}}]})
+                     :headers NOTION_API_HEADERS
                      :content-type :json
                      :accept :json})
       :body
       (json/read-str :key-fn keyword)))
 
 (defn append-embed [{:keys [pageId widgetType]}]
-  (client/patch (str "https://api.notion.com/v1/blocks/" pageId "/children")
+  (client/patch (str NOTION_API_ROOT_URL "blocks/" pageId "/children")
                 {:body (json/write-str {:children [{:type "embed" :embed {:url (str ROOT_URL widgetType "?pageId=" pageId)}}]})
                  #_(str "{\"children\": [{  \"type\": \"embed\", \"embed\": {\"url\": \"" ROOT_URL widgetType "?pageId=" pageId "\"  }}]}")
-                 :headers {"Authorization" "secret_mt9XpnujzYB8JQZC9X4PyYw0wMpsAzDr8BTInyPszuD"
-                           "Content-Type" "application/json"
-                           "Notion-Version" "2021-05-13"}
+                 :headers NOTION_API_HEADERS
                  :content-type :json
                  :accept :json}))
 
@@ -83,11 +83,11 @@
 
 (def app
   (-> app-routes
+      (wrap-defaults (assoc-in site-defaults [:security :anti-forgery] false))
+      (wp/wrap-params)
       (wrap-cors
         :access-control-allow-origin ["*"]
         :access-control-allow-methods [:get :put :post :delete])
-      (wrap-defaults (assoc-in site-defaults [:security :anti-forgery] false))
-      (wp/wrap-params)
       (xh/wrap-frame-options {:allow-from "*"})))
 
 

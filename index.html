@@ -30,15 +30,19 @@
 
     const button = document.getElementById('submit-btn');
 
+    var myHeaders = new Headers();
+    myHeaders.append("Content-Type", "application/json");
+
     button.addEventListener('click', async _ => {
         try {
             const response = await fetch('https://univalence-notion-widgets.herokuapp.com/create-widget',
                 {
                     method: 'post',
                     mode: 'no-cors',
+                    headers: myHeaders,
                     body: JSON.stringify(getFormData())
                 });
-            console.log('Completed!', response);
+            console.log('Completed!', response, JSON.stringify(getFormData()));
         } catch (err) {
             console.error(`Error: ${err}`);
         }

@@ -92,7 +92,7 @@
       (wrap-defaults (assoc-in site-defaults [:security :anti-forgery] false))
       (wp/wrap-params)
       (wrap-cors
-        :access-control-allow-origin ["*"]
+        :access-control-allow-origin [#".*"]
         :access-control-allow-methods [:get :put :post :delete])
       (xh/wrap-frame-options {:allow-from "*"})))
 

@@ -9,20 +9,20 @@
 </head>
 
 <body>
-    <label for="notion-page-url">Where am I?:</label><br>
-    <input type="text" id="notion-page-url" name="page-url"><br>
+<label for="notion-page-url">Where am I?:</label><br>
+<input type="text" id="notion-page-url" name="page-url"><br>
 
-    <label for="widget-select">Choose a widget:</label>
-    <select name="widgets" id="widget-select">
-        <option value="one">One</option>
-        <option value="two">Two</option>
-    </select>
+<label for="widget-select">Choose a widget:</label>
+<select name="widgets" id="widget-select">
+    <option value="one">One</option>
+    <option value="two">Two</option>
+</select>
 
-    <input id="submit-btn" type="submit">
+<input id="submit-btn" type="submit">
 
 <script>
 
-    function getFormData(){
+    function getFormData() {
         const widgetType = document.getElementById('widget-select').value;
         const pageId = document.getElementById('notion-page-url').value;
         return {widgetType, pageId}
@@ -33,13 +33,16 @@
     button.addEventListener('click', async _ => {
         try {
             const response = await fetch('https://univalence-notion-widgets.herokuapp.com/create-widget',
-            {method: 'post',
-                mode: 'no-cors',
-             body: getFormData()});
+                {
+                    method: 'post',
+                    mode: 'no-cors',
+                    body: JSON.stringify(getFormData())
+                });
             console.log('Completed!', response);
-        } catch(err) {
+        } catch (err) {
             console.error(`Error: ${err}`);
-        }});
+        }
+    });
 </script>
 
 </body>

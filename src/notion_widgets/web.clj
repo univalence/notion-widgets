@@ -68,8 +68,7 @@
 
 (defn append-embed [{:keys [pageId widgetType]}]
   (client/patch (str NOTION_API_ROOT_URL "blocks/" pageId "/children")
-                {:body (json/write-str {:children [{:type "embed" :embed {:url (str GITHUB_PROJECT_ROOT_URL widgetType "?pageId=" pageId)}}]})
-                 #_(str "{\"children\": [{  \"type\": \"embed\", \"embed\": {\"url\": \"" GITHUB_PROJECT_ROOT_URL widgetType "?pageId=" pageId "\"  }}]}")
+                {:body (json/write-str {:children [{:type "embed" :embed {:url (str GITHUB_PROJECT_ROOT_URL "widgets/" widgetType "?pageId=" pageId)}}]})
                  :headers NOTION_API_HEADERS
                  :content-type :json
                  :accept :json}))

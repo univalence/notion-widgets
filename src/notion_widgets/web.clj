@@ -15,7 +15,7 @@
             [ring.middleware.x-headers :as xh]
             [ring.middleware.params :as wp]))
 
-(def ROOT_URL "https://univalence.github.io/notion-widgets/")
+(def GITHUB_PROJECT_ROOT_URL "https://univalence.github.io/notion-widgets/")
 
 (def NOTION_API_HEADERS {"Authorization" "secret_mt9XpnujzYB8JQZC9X4PyYw0wMpsAzDr8BTInyPszuD"
                          "Content-Type" "application/json"
@@ -68,8 +68,8 @@
 
 (defn append-embed [{:keys [pageId widgetType]}]
   (client/patch (str NOTION_API_ROOT_URL "blocks/" pageId "/children")
-                {:body (json/write-str {:children [{:type "embed" :embed {:url (str ROOT_URL widgetType "?pageId=" pageId)}}]})
-                 #_(str "{\"children\": [{  \"type\": \"embed\", \"embed\": {\"url\": \"" ROOT_URL widgetType "?pageId=" pageId "\"  }}]}")
+                {:body (json/write-str {:children [{:type "embed" :embed {:url (str GITHUB_PROJECT_ROOT_URL widgetType "?pageId=" pageId)}}]})
+                 #_(str "{\"children\": [{  \"type\": \"embed\", \"embed\": {\"url\": \"" GITHUB_PROJECT_ROOT_URL widgetType "?pageId=" pageId "\"  }}]}")
                  :headers NOTION_API_HEADERS
                  :content-type :json
                  :accept :json}))
@@ -78,7 +78,7 @@
 (defroutes app-routes
            (GET "/" [] (html-response index-page))
            (GET "/append-block/:id" [id] (edn-response (append-block id)))
-           (POST "/create-widget" {body :body} (edn-response (append-embed (read-string (slurp body)))))
+           (POST "/create-widget" {body :body} (edn-response (append-embed (json/read-str (slurp body) :key-fn keyword))))
            (route/not-found "Not Found"))
 
 (def app

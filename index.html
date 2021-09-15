@@ -1,11 +1,13 @@
 <!doctype html>
 <html lang="fr">
+
 <head>
     <meta charset="utf-8">
     <title>Titre de la page</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="script.js"></script>
+    <!--<link rel="stylesheet" href="style.css">-->
+    <!--<script src="script.js"></script>-->
 </head>
+
 <body>
     <label for="notion-page-url">Where am I?:</label><br>
     <input type="text" id="notion-page-url" name="page-url"><br>
@@ -17,7 +19,9 @@
     </select>
 
     <input id="submit-btn" type="submit">
+
 <script>
+
     function getFormData(){
         const widgetType = document.getElementById('widget-select').value;
         const pageId = document.getElementById('notion-page-url').value;

@@ -13,39 +13,11 @@
             [hiccup.page :refer [html5]]
             [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.x-headers :as xh]
-            [ring.middleware.params :as wp]))
+            [ring.middleware.params :as wp]
+
+            [notion-widgets.notion-api :as api]))
 
 (def GITHUB_PROJECT_ROOT_URL "https://univalence.github.io/notion-widgets/")
-
-(def NOTION_API_HEADERS {"Authorization" "secret_mt9XpnujzYB8JQZC9X4PyYw0wMpsAzDr8BTInyPszuD"
-                         "Content-Type" "application/json"
-                         "Notion-Version" "2021-05-13"})
-
-(def NOTION_API_ROOT_URL "https://api.notion.com/v1/")
-
-(def index-page
-  (html5
-    [:head
-     #_[:meta {:charset "utf-8"}]
-     #_[:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-     #_[:link {:href "" :rel "stylesheet"}]
-     [:body
-      [:div#app "Yop"]
-      [:button#post-btn "press me"]
-      [:script
-       "var url = (window.location != window.parent.location)
-                  ? document.referrer
-                  : document.location.href;
-
-        const button = document.getElementById('post-btn');
-
-        button.addEventListener('click', async _ => {
-          try { const response = await fetch('/append-block', {
-                  method: 'get'});
-                console.log('Completed!', response);
-              } catch(err) {
-                console.error(`Error: ${err}`);
-              }});"]]]))
 
 (defn html-response [content]
   {:status 200
@@ -62,29 +34,30 @@
    :headers {"Content-Type" "application/edn"}
    :body (pr-str data)})
 
-(defn append-block [id]
-  (-> (client/patch (str NOTION_API_ROOT_URL "blocks/" id "/children")
-                    {:body (json/write-str {:children [{:object "block", :type "heading_2", :heading_2 {:text [{:type "text", :text {:content "Pouet"}}]}}]})
-                     :headers NOTION_API_HEADERS
-                     :content-type :json
-                     :accept :json})
-      :body
-      (json/read-str :key-fn keyword)))
+(defn find-form-block-id [page-id]
+  (-> (api/page-content page-id)
+      (get :body)
+      (json/read-str :key-fn keyword)
+      (get :results)
+      (->> (filter (fn [{:keys [type embed]}]
+                     (and (= type "embed")
+                          (= "https://univalence.github.io/notion-widgets/" (:url embed))))))
+      (first)
+      (get :id)))
 
-(defn append-embed [{:keys [pageId widgetType]}]
-  (client/patch (str NOTION_API_ROOT_URL "blocks/" pageId "/children")
-                {:body (json/write-str {:children [{:type "embed" :embed {:url (str GITHUB_PROJECT_ROOT_URL "widgets/" widgetType "?pageId=" pageId)}}]})
-                 :headers NOTION_API_HEADERS
-                 :content-type :json
-                 :accept :json}))
+(defn replace-form-block
+  [page-id widget-type form-block-id]
+  (api/replace-block page-id form-block-id
+                     {:embed {:url (str GITHUB_PROJECT_ROOT_URL "widgets/" widget-type "?pageId=" form-block-id)}})
+  )
 
 
 (defroutes app-routes
-           (GET "/" [] (html-response index-page))
-           (GET "/append-block/:id" [id] (edn-response (append-block id)))
            (POST "/create-widget" {body :body}
-             (edn-response (append-embed (json/read-str (slurp body) :key-fn keyword)))
-             (json-response {:success true}))
+             (let [{:keys [pageId widgetType]}
+                   (json/read-str (slurp body) :key-fn keyword)]
+               (replace-form-block pageId widgetType (find-form-block-id pageId))
+               (json-response {:success true})))
            (route/not-found "Not Found"))
 
 (def app

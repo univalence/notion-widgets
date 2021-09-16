@@ -15,7 +15,7 @@
                :accept :json}))
 
 (defn page-blocks [page-id]
-  (-> (client/get (str "https://api.notion.com/v1/blocks/" page-id "/children")
+  (-> (client/get (str NOTION_API_ROOT_URL "blocks/" page-id "/children")
                   {:headers NOTION_API_HEADERS
                    :content-type :json
                    :accept :json})
@@ -26,14 +26,14 @@
 (defn delete-blocks [blocks]
   (doseq [{:as block :keys [id]} blocks]
     (println "delete block: " block)
-    (client/delete (str "https://api.notion.com/v1/blocks/" id)
+    (client/delete (str NOTION_API_ROOT_URL "blocks/" id)
                    {:headers NOTION_API_HEADERS
                     :content-type :json
                     :accept :json})))
 
 (defn append-blocks [page-id blocks]
   (println "append blocks: " blocks)
-  (client/patch (str "https://api.notion.com/v1/blocks/" page-id "/children")
+  (client/patch (str NOTION_API_ROOT_URL "blocks/" page-id "/children")
                 {:headers NOTION_API_HEADERS
                  :body (json/write-str {:children blocks})
                  :content-type :json

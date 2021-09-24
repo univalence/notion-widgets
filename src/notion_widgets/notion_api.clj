@@ -100,11 +100,6 @@
                 opts))
 
     (defn page-blocks
-      [page-id]
-      (-> (page-content page-id)
-          (get-in [:body :results])))
-
-    (defn page-all-blocks
       "return all blocks from a page,
        takes care of pagination"
       [page-id & [cursor]]
@@ -113,44 +108,43 @@
             {:keys [results has_more next_cursor]} (:body (api-call url))]
         (if has_more
           (concat results
-                  (page-all-blocks page-id next_cursor))
+                  (page-blocks page-id next_cursor))
           results)))
 
+    ;; TODO: this should just take ids instead of blocks
     (defn delete-blocks
-      [blocks & [opts]]
-      (doseq [{:as block :keys [id]} blocks]
-        (println "delete block: " block)
-        (api-call :delete
-                  (str "blocks/" id)
-                  opts)))
+      [ids]
+      (doseq [id ids]
+        (println "deleting block: " id)
+        (api-call :delete (str "blocks/" id))))
 
     (defn append-blocks
       [page-id blocks]
-      (println "append blocks: " blocks)
-      (api-call :patch
-                (str "blocks/" page-id "/children")
-                {:body {:children blocks}}))
-
-    (defn insert-before
-      [page-id block-id block]
-      (let [blocks (page-blocks page-id)
-            blocks-to-delete (drop-while (fn [block] (not (= (:id block) block-id)))
-                                         blocks)]
-        (delete-blocks blocks-to-delete)
-        (append-blocks page-id (vec (cons block blocks-to-delete)))))
+      (println "appending blocks: " blocks)
+      (when (seq blocks)
+        (api-call :patch
+                  (str "blocks/" page-id "/children")
+                  {:body {:children (vec blocks)}})))
 
     (defn replace-block
-      "could be implemented using 'delete-block + 'insert-before to avoid repetition"
       [page-id block-id block]
-      (let [blocks (page-blocks page-id)
-            blocks-to-delete (drop-while (fn [block] (not (= (:id block) block-id)))
-                                         blocks)]
-        (delete-blocks blocks-to-delete)
-        (append-blocks page-id (vec (cons block (next blocks-to-delete))))))
+      (let [deletable (drop-while (fn [block] (not (= (:id block) block-id)))
+                                  (page-blocks page-id))
+            rewritable (->> (next deletable)
+                            reverse
+                            (drop-while empty-block?)
+                            reverse)]
+        (append-blocks page-id [block])
+        (delete-blocks (map :id deletable))
+        (append-blocks page-id rewritable)))
 
     (defn delete-trailing-empty-blocks
       [page-id]
-      (delete-blocks (take-while empty-block? (reverse (page-all-blocks page-id)))))
+      (->> (reverse (page-blocks page-id))
+           (take-while empty-block?)
+           (map :id)
+           delete-blocks)
+      )
 
     #_(delete-trailing-empty-blocks "7cafec8d0a954cacb5f062ed25dd5c33")
 
@@ -269,69 +263,67 @@
       (page-blocks "7cafec8d-0a95-4cac-b5f0-62ed25dd5c33")
 
       (future (listen {:on-change (fn [state block]
-                                    (when-let [[verb & args] (command-block? block)]
-                                      (if-let [cmd (get commands (keyword verb))]
-                                        (apply cmd block args))))}))))
+                             (println "change!: " block)
+                             (when-let [[verb & args] (command-block? block)]
+                               (if-let [cmd (get commands (keyword verb))]
+                                 (apply cmd block args))))}))))
+
+(comment :replace-whole-page-xp
+
+         (def id "91b4f44c2ddf483db595785ce8369a8f")
+
+         (def page (api-call :get (str "pages/" id)))
+
+         )
 
 
+(comment :brute-api-wrap_aborted
+         ;; databases
+         ;; -------------------------------------------------------------------------------
 
+         (defn get-databases []
+           (api-call "databases"))
 
+         (defn get-database [id]
+           (api-call (str "databases/" id)))
 
+         (defn create-database
+           [{:as body :keys [title parent properties]}]
+           (api-call :post "databases" {:body body :debug true}))
 
+         #_(create-database {:parent {:type "page_id"
+                                      :page_id "7cafec8d0a954cacb5f062ed25dd5c33"}
+                             :properties {} #_{:zoub {:type "title" :title {}}}
+                             ;:title "hello"
+                             })
 
+         (defn update-database
+           [id {:as body :keys [title properties]}]
+           (api-call :patch (str "databases/" id) {:body body}))
 
-(do :brute-api-wrap_aborted
-    ;; databases
-    ;; -------------------------------------------------------------------------------
+         (defn query-database
+           [id {:as body :keys [filter sorts]}]
+           (api-call :post (str "databases/" id "/query") {:body body}))
 
-    (defn get-databases []
-      (api-call "databases"))
+         ;; pages
+         ;; -------------------------------------------------------------------------------
 
-    (defn get-database [id]
-      (api-call (str "databases/" id)))
+         (defn get-page [id]
+           (api-call (str "pages/" id)))
 
-    (defn create-database
-      [{:as body :keys [title parent properties]}]
-      (api-call :post "databases" {:body body :debug true}))
+         (defn create-page
+           [{:keys [parent properties title children icon cover]}]
+           )
 
-    #_(create-database {:parent {:type "page_id"
-                                 :page_id "7cafec8d0a954cacb5f062ed25dd5c33"}
-                        :properties {} #_{:zoub {:type "title" :title {}}}
-                        ;:title "hello"
-                        })
+         (defn update-page [])
 
-    (defn update-database
-      [id {:as body :keys [title properties]}]
-      (api-call :patch (str "databases/" id) {:body body}))
+         (defn db
+           ([] (api-call "databases"))
+           ([id] (api-call (str "databases/" id)))
+           ([id options] (api-call :get (str "databases/" id) options))
+           ([id method options] (api-call method (str "databases/" id) options)))
 
-    (defn query-database
-      [id {:as body :keys [filter sorts]}]
-      (api-call :post (str "databases/" id "/query") {:body body}))
-
-    ;; pages
-    ;; -------------------------------------------------------------------------------
-
-    (defn get-page [id]
-      (api-call (str "pages/" id)))
-
-    (defn create-page
-      [{:keys [parent properties title children icon cover]}]
-      )
-
-    (defn update-page [])
-
-    (defn db
-      ([] (api-call "databases"))
-      ([id] (api-call (str "databases/" id)))
-      ([id options] (api-call :get (str "databases/" id) options))
-      ([id method options] (api-call method (str "databases/" id) options)))
-
-    (db "aef435c9307d467dbd32dd3a4b9a894d"))
-
-
-
-
-
+         (db "aef435c9307d467dbd32dd3a4b9a894d"))
 
 (comment :workona-export
 

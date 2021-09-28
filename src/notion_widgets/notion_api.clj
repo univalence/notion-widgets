@@ -111,7 +111,6 @@
                   (page-blocks page-id next_cursor))
           results)))
 
-    ;; TODO: this should just take ids instead of blocks
     (defn delete-blocks
       [ids]
       (doseq [id ids]
@@ -263,10 +262,10 @@
       (page-blocks "7cafec8d-0a95-4cac-b5f0-62ed25dd5c33")
 
       (future (listen {:on-change (fn [state block]
-                             (println "change!: " block)
-                             (when-let [[verb & args] (command-block? block)]
-                               (if-let [cmd (get commands (keyword verb))]
-                                 (apply cmd block args))))}))))
+                                    (println "change!: " block)
+                                    (when-let [[verb & args] (command-block? block)]
+                                      (if-let [cmd (get commands (keyword verb))]
+                                        (apply cmd block args))))}))))
 
 (comment :replace-whole-page-xp
 
@@ -325,21 +324,81 @@
 
          (db "aef435c9307d467dbd32dd3a4b9a894d"))
 
-(comment :workona-export
+(do :workona-export
 
-         (reduce
-           (fn [{:as state :keys [tree path]} line]
-             (let [[_ indentation content] (re-matches #"^( *)(.*)$" line)
-                   line-depth (/ (count indentation) 2)
-                   current-depth (count path)]
-               (case (compare line-depth current-depth)
-                 -1 ()
-                 0 (update state :tree update-in path conj content)
-                 1 ()
-                 )))
+    (defn entry-line [line]
+      (if-let [[_ key val] (re-matches #"^(\S+): (.+) *$" line)]
+        [key val]))
 
-           {:path [] :tree []}
-           (clojure.string/split-lines (slurp "/Users/pierrebaille/Desktop/workona-data-2021-09-22.txt")))
+    (defn key-line [line]
+      (if-let [[_ key] (re-matches #"^(\S+): *$" line)]
+        key))
+
+    (defn format-tree [tree]
+      (cond (map? tree)
+            (if (every? #(re-matches #"^[0-9]+$" %) (keys tree))
+              (mapv (comp format-tree val) (sort-by key tree))
+              (->> (map (fn [[k v]] [(keyword k) (format-tree v)]) tree)
+                   (into {})))
+            :else tree))
+
+    (defn parse-line [line]
+      (let [[_ indentation content] (re-matches #"^( *)(.*)$" line)]
+        {:depth (/ (count indentation) 2)
+         :content content}))
+
+    (def tree
+      (loop [lines (next (clojure.string/split-lines (slurp "/Users/pierrebaille/Desktop/workona-data-2021-09-22.txt")))
+             path []
+             tree {}]
+        (if-not (seq lines)
+          tree
+          (let [[line & ls] lines
+                ;; _ (println "line: " line)
+                {:keys [depth content]} (parse-line line)
+                current-depth (count path)]
+
+            (if (< depth current-depth)
+              (recur lines (vec (take depth path)) tree)
+              (if-let [key (and ls
+                                (not (>= depth (:depth (parse-line (first ls)))))
+                                (key-line content))]
+                (recur ls (conj path key) tree)
+                (if-let [[k v] (entry-line content)]
+                  (do #_(println "el " k v path tree) (recur ls path (assoc-in tree (conj path k) v)))
+                  (if (key-line content)
+                    (do #_(println "skip key no val " line)
+                      (recur ls path tree))
+                    [:pouet line (count ls)]))))))))
+
+    (spit "workona.edn" (with-out-str (pprint (format-tree tree))))
+
+    (def TREE (format-tree tree))
+    (def BOOKMARK_FILE_PREFIX
+      "<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<!-- This is an automatically generated file.\n     It will be read and overwritten.\n     DO NOT EDIT! -->\n<META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=UTF-8\">\n<TITLE>Bookmarks</TITLE>\n<H1>Bookmarks</H1>\n")
 
 
-         (compare 1 0))
+    (defn str*
+      ([xs] (if (sequential? xs)
+              (apply str (map str* xs))
+              (str xs)))
+      ([x & xs]
+       (str* (cons x xs))))
+
+    (defn workspaces->chrome-html-bookmark-file-str [tree]
+      (str*
+        BOOKMARK_FILE_PREFIX
+        "<DL><p>\n"
+        (map (fn [{:keys [title tabs]}]
+               ["    <DT><H3>" title "</H3>\n"
+                "    <DL><p>\n" (map (fn [{:keys [title url]}]
+                                 ["        <DT><A HREF=\"" url "\">" title "</A>\n"])
+                               tabs)
+                "    </DL><p>\n"])
+             (:Workspaces tree))
+        "</DL><p>\n"))
+
+    (spit "export-workona.html" (workspaces->chrome-html-bookmark-file-str TREE))
+
+    (type (:body (client/get "https://superuser.com/favicon.ico")))
+    )
